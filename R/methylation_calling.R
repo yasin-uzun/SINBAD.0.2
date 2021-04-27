@@ -392,7 +392,9 @@ plot_split_reports <- function(df_org_split_reports, df_lambda_split_reports, li
 
   roof = max(unlist(pcts_met))
 
-  vioplot(pcts_met,
+  #vioplot(
+  boxplot(
+          pcts_met,
           col = "lightgreen", names = x_labels, cex.main = 1.25,
           main = '% Methylation rate',
           ylab = '', cex.lab = 1.50, cex.axis = 1.5, cex.names = 1.5
@@ -434,7 +436,9 @@ plot_split_reports <- function(df_org_split_reports, df_lambda_split_reports, li
 
     if(floor > 99) {floor = 99}
 
-    vioplot(pcts_conv, ylim = c(floor, roof),
+    #vioplot(
+    boxplot(
+            pcts_conv, ylim = c(floor, roof),
             col = "#fb8072", names = x_labels, cex.main = 1.25, cex.sub = 1.5,
             main = '% Conversion rate', cex.lab = 1.50, cex.names = 1.5, cex.axis = 1.5, cex = 1.5,
             ylab = ''

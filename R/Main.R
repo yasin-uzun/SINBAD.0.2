@@ -1,5 +1,7 @@
 library(doSNOW)
 
+#source('/mnt/isilon/tan_lab/uzuny/scripts/R_utilities/biology.v07.R')
+source('/mnt/isilon/tan_lab/uzuny/scripts/R_utilities/seurat_plotting.v03.R')
 
 test <- function()
 {
@@ -41,24 +43,16 @@ construct_sinbad_object <- function(raw_fastq_dir  = NA,
   main_log_dir <<- paste0(sample_working_dir, '/logs/')
   demux_fastq_dir <<- paste0(sample_working_dir, '/demux_fastq/')
   trimmed_fastq_dir <<- paste0(sample_working_dir, '/trimmed_fastq/')
-  alignment_dir <<- paste0(sample_working_dir, '/alignments/')
+  merged_alignment_dir <<- paste0(sample_working_dir, '/alignments_merged/')
 
-  if(sequencing_type == 'paired')
-  {
-    alignments_r1_and_r2_dir <<- paste0(sample_working_dir, '/alignments_r1_and_r2/')
-    r2_meta_fastq_dir <<- paste0(sample_working_dir, '/r2_meta_fastq/')
 
-    dir.create(alignments_r1_and_r2_dir, showWarnings = F, recursive = T)
-    dir.create(r2_meta_fastq_dir, showWarnings = F, recursive = T)
-
-  }
 
   methylation_calls_dir <<- paste0(sample_working_dir, '/methylation_calls/')
   summary_dir <<- paste0(sample_working_dir, '/summary/')
   plot_dir <<- paste0(sample_working_dir, '/plots/')
   matrix_dir <<- paste0(sample_working_dir, '/matrices/')
   object_dir <<- paste0(sample_working_dir, '/objects/')
-  alignment_summary_file <<- paste0(sample_working_dir, '/r2_meta_fastq/')
+  alignment_summary_file <<- paste0(sample_working_dir, '/Alignment_Summary.tsv')
 
   if(trimmer == "NoTrimming")
   {
@@ -68,7 +62,7 @@ construct_sinbad_object <- function(raw_fastq_dir  = NA,
 
   dir.create(main_log_dir, showWarnings = F, recursive = T)
   dir.create(trimmed_fastq_dir, showWarnings = F, recursive = T)
-  dir.create(alignment_dir, showWarnings = F, recursive = T)
+  dir.create(merged_alignment_dir, showWarnings = F, recursive = T)
   dir.create(methylation_calls_dir, showWarnings = F, recursive = T)
   dir.create(summary_dir, showWarnings = F, recursive = T)
   dir.create(plot_dir, showWarnings = F, recursive = T)
@@ -82,16 +76,30 @@ construct_sinbad_object <- function(raw_fastq_dir  = NA,
                        'demux_index_file' = demux_index_file,
                        'demux_fastq_dir' = demux_fastq_dir,
                        'trimmed_fastq_dir' =  trimmed_fastq_dir,
-                       'alignment_dir' = alignment_dir,
+                       'merged_alignment_dir' = merged_alignment_dir,
                        'methylation_calls_dir'  = methylation_calls_dir,
                        'summary_dir' = summary_dir,
                        'plot_dir' = plot_dir,
                        'sample_name' = sample_name,
                        'matrix_dir' = matrix_dir,
-                       'object_dir' = object_dir,
-                       'r2_meta_fastq_dir' = r2_meta_fastq_dir
+                       'object_dir' = object_dir
 
                        )
+
+
+  if(sequencing_type == 'paired')
+  {
+    r2_meta_fastq_dir <<- paste0(sample_working_dir, '/r2_meta_fastq/')
+    r1_and_r2_alignments_dir <<- paste0(sample_working_dir, '/alignments_r1_and_r2/')
+
+    dir.create(r2_meta_fastq_dir, showWarnings = F, recursive = T)
+    dir.create(r1_and_r2_alignments_dir, showWarnings = F, recursive = T)
+
+    sinbad_object$r2_meta_fastq_dir = r2_meta_fastq_dir
+    sinbad_object$r1_and_r2_alignments_dir = r1_and_r2_alignments_dir
+
+  }
+
 
   class(sinbad_object) = 'Sinbad'
 
@@ -170,9 +178,9 @@ wrap_demux_stats <- function(sinbad_object)
 
 wrap_trim_fastq_files <- function(sinbad_object)#Trim adapters
 {
-  trim_fastq_files(sinbad_object$demux_fastq_dir,
-                   sinbad_object$trimmed_fastq_dir,
-                   sinbad_object$main_log_dir)
+  trim_fastq_files(demux_fastq_dir = sinbad_object$demux_fastq_dir,
+                   trimmed_fastq_dir = sinbad_object$trimmed_fastq_dir,
+                   main_log_dir = sinbad_object$main_log_dir)
 
   return(sinbad_object)
 }
@@ -208,19 +216,23 @@ wrap_plot_preprocessing_stats <- function(sinbad_object)
 wrap_align_sample <- function(sinbad_object, pattern = '')
 {
   pbat_flag = 0
+  if(sequencing_type == 'paired' | protocol == 'snmc'){
 
-  #Run aligner
-  if(sequencing_type == 'paired')
-  {
-    if(grepl('--pbat', bismark_aligner_param_settings) ) {pbat_flag = 1}
+    alignment_dir = sinbad_object$r1_and_r2_alignments_dir
   }
 
+  #Run aligner
+  #if(sequencing_type == 'paired')
+  #{
+    if(grepl('--pbat', bismark_aligner_param_settings) ) {pbat_flag = 1}
+  #}
 
-  if(pbat_flag == 0)
+
+  if(pbat_flag == 0) #If no pbat, align as usual
   {
     align_sample(read_dir = sinbad_object$trimmed_fastq_dir,
                genomic_sequence_path = genomic_sequence_path,
-               alignment_dir = sinbad_object$alignment_dir,
+               alignment_dir = alignment_dir,
                aligner = aligner,
                num_cores= num_cores,
                mapq_threshold =mapq_threshold,
@@ -229,20 +241,20 @@ wrap_align_sample <- function(sinbad_object, pattern = '')
   }else
   {
     print('Bismark-paired-pbat')
-    #align_sample(read_dir = sinbad_object$trimmed_fastq_dir,
-     #            genomic_sequence_path = genomic_sequence_path,
-    #             alignment_dir = sinbad_object$alignment_dir,
-     #            aligner = aligner,
-      #           num_cores= num_cores,
-       #          mapq_threshold =mapq_threshold,
-        #         main_log_dir = sinbad_object$main_log_dir,
-         #        pattern = 'R1')
+    align_sample(read_dir = sinbad_object$trimmed_fastq_dir,
+                 genomic_sequence_path = genomic_sequence_path,
+                 alignment_dir = alignment_dir,
+                 aligner = aligner,
+                 num_cores= num_cores,
+                 mapq_threshold =mapq_threshold,
+                 main_log_dir = sinbad_object$main_log_dir,
+                 pattern = 'R1')
 
     bismark_aligner_param_settings = gsub('--pbat', '', bismark_aligner_param_settings)
 
     align_sample(read_dir = sinbad_object$trimmed_fastq_dir,
                  genomic_sequence_path = genomic_sequence_path,
-                 alignment_dir = sinbad_object$alignment_dir,
+                 alignment_dir = alignment_dir,
                  aligner = aligner,
                  num_cores= num_cores,
                  mapq_threshold =mapq_threshold,
@@ -258,8 +270,10 @@ wrap_align_sample <- function(sinbad_object, pattern = '')
 
 wrap_generate_alignment_stats <- function(sinbad_object)
 {
-  sinbad_object$df_alignment_reports = process_bismark_alignment_reports(alignment_dir = sinbad_object$alignment_dir)
-  sinbad_object$df_bam_read_counts = count_bam_files(alignment_dir = sinbad_object$alignment_dir)
+
+
+  sinbad_object$df_alignment_reports = process_bismark_alignment_reports(alignment_dir = sinbad_object$r1_and_r2_alignments_dir)
+  sinbad_object$df_bam_read_counts = count_bam_files(alignment_dir = sinbad_object$r1_and_r2_alignments_dir)
   dim(sinbad_object$df_alignment_reports)
   dim(sinbad_object$df_bam_read_counts)
 
@@ -276,7 +290,7 @@ wrap_generate_alignment_stats <- function(sinbad_object)
 
 wrap_compute_coverage_rates <- function(sinbad_object)
 {
-  df_coverage_rates = compute_coverage_rates(alignment_dir = sinbad_object$alignment_dir)
+  df_coverage_rates = compute_coverage_rates(merged_alignment_dir = sinbad_object$merged_alignment_dir)
   df_coverage_rates_ordered = df_coverage_rates[as.character(sinbad_object$df_alignment_stats$Cell_ID), ]
 
   sinbad_object$df_coverage_rates =df_coverage_rates_ordered
@@ -382,19 +396,19 @@ wrap_plot_alignment_stats <- function(sinbad_object)
 
 wrap_merge_r1_and_r2_bam <- function(sinbad_object)
 {
-  alignment_dir_01 = sinbad_object$alignment_dir
-  alignment_dir_02 = gsub('alignments', 'alignments_r1_and_r2', alignment_dir_01)
-  command = paste('mv', alignment_dir_01, alignment_dir_02)
+  merged_alignment_dir_01 = sinbad_object$merged_alignment_dir
+  merged_alignment_dir_02 = gsub('alignments', 'alignments_r1_and_r2', merged_alignment_dir_01)
+  command = paste('mv', merged_alignment_dir_01, merged_alignment_dir_02)
   system(command)
-  command = paste('mkdir', alignment_dir_01)
+  command = paste('mkdir', merged_alignment_dir_01)
   system(command)
 
-  merge_r1_and_r2_bam_for_sample(alignment_dir_02, alignment_dir_01)
+  merge_r1_and_r2_bam_for_sample(merged_alignment_dir_02, merged_alignment_dir_01)
 }
 
 wrap_call_methylation_sites <- function(sinbad_object)
 {
-  call_methylation_sites_for_sample(sinbad_object$alignment_dir,
+  call_methylation_sites_for_sample(sinbad_object$merged_alignment_dir,
                                     sinbad_object$methylation_calls_dir,
                                     sinbad_object$main_log_dir,
                                     bme_param_settings )

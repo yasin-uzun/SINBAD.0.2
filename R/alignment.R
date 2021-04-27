@@ -1,5 +1,5 @@
 library(doSNOW)
-library(vioplot)
+#library(vioplot)
 library(readr)
 library(Rsamtools)
 library(ShortRead)
@@ -696,11 +696,15 @@ plot_alignment_stats <- function(sample_name, df_alignment_stats)
     #pcts[[1]] = pcts[[1]][!is.na(pcts[[1]])]
     #pcts[[2]] = pcts[[2]][!is.na(pcts[[2]])]
 
-    vioplot(pcts, ylim = c(0,  roof),
+    #vioplot(
+    boxplot(
+             pcts, ylim = c(0,  roof),
             col = "#fb8072", names = x_labels, cex.main = 1.25, cex.names = 1.25,
             main = 'Methylation rate distributions', cex.lab = 1.25, cex.axis = 1.25,
             ylab = 'Methylation rate (%)'
-    )
+         )
+
+
 
 
 
@@ -717,8 +721,8 @@ plot_alignment_stats <- function(sample_name, df_alignment_stats)
     x_labels = c('Total', 'Aligned', 'Mapq. filt.', 'Rm-dup.', 'NC filt.', 'Org.')
 
 
-    vioplot(
-    #boxplot(
+    #vioplot(
+    boxplot(
             total_reads/1000000,
             aligned_reads/1000000,
             mapq_read_counts/1000000,

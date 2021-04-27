@@ -13,7 +13,6 @@ Imports:
   data.table,
   DelayedArray,
   ShortRead,
-  vioplot,
   readr,
   doSNOW,
   reshape2,
