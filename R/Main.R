@@ -290,7 +290,7 @@ wrap_generate_alignment_stats <- function(sinbad_object)
 
 wrap_compute_coverage_rates <- function(sinbad_object)
 {
-  df_coverage_rates = compute_coverage_rates(merged_alignment_dir = sinbad_object$merged_alignment_dir)
+  df_coverage_rates = compute_coverage_rates(alignment_dir = sinbad_object$r1_and_r2_alignments_dir)
   df_coverage_rates_ordered = df_coverage_rates[as.character(sinbad_object$df_alignment_stats$Cell_ID), ]
 
   sinbad_object$df_coverage_rates =df_coverage_rates_ordered
